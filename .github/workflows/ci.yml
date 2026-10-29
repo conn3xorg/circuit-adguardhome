@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Conn3x
+        env: &gh
+          GH_TOKEN: ${{ github.token }}
+        run: &install |
+          tag=$(gh release view -R conn3xorg/conn3x --json tagName -q .tagName)
+          file="conn3x_${tag#v}_linux_amd64.tar.gz"
+          cd "$RUNNER_TEMP"
+          curl -sSfLO "https://github.com/conn3xorg/conn3x/releases/download/$tag/$file"
+          curl -sSfLO "https://github.com/conn3xorg/conn3x/releases/download/$tag/checksums.txt"
+          grep " $file\$" checksums.txt | sha256sum -c -
+          mkdir -p bin && tar -xzf "$file" -C bin conn3x
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: conn3x version
+      - run: conn3x fmt -check -recursive
+      - name: Validate
+        run: conn3x init -backend=false && conn3x validate
+      - name: Validate the example
+        working-directory: examples/local
+        run: conn3x init -backend=false && conn3x validate
+
+  e2e:
+    needs: validate
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [rocky10, fedora45, ubuntu2404, debian13]
+    name: e2e (${{ matrix.distro }})
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The test host images live in the Conn3x repo.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: conn3xorg/conn3x
+          ref: main
+          path: conn3x
+          persist-credentials: false
+          sparse-checkout: test/images
+      - name: Install Conn3x
+        env: *gh
+        run: *install
+      - name: Start the ${{ matrix.distro }} host
+        working-directory: examples/local
+        env:
+          CONTAINERFILE: ${{ github.workspace }}/conn3x/test/images/${{ matrix.distro }}/Containerfile
+          # The host container is privileged, so systemd can sandbox AdGuard Home.
+          PODMAN: sudo podman
+        run: ./up.sh
+      - name: Apply, then plan again with no changes
+        working-directory: examples/local
+        run: |
+          conn3x init
+          conn3x apply -auto-approve
+          conn3x plan -detailed-exitcode
+      # dig comes from the host container's own packages. The blocklist
+      # downloads in the background after AdGuard Home starts, so the first
+      # check waits for it.
+      - name: Check blocking, resolving, rewrites and the API
+        run: |
+          sudo podman exec -i circuit-adguardhome sh -eux <<'EOF'
+          if command -v apt-get >/dev/null; then
+            apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y dnsutils >/dev/null
+          else
+            dnf -q -y install bind-utils
+          fi
+          for _ in $(seq 60); do
+            [ "$(dig +short @127.0.0.1 doubleclick.net A)" = 0.0.0.0 ] && break
+            sleep 1
+          done
+          [ "$(dig +short @127.0.0.1 doubleclick.net A)" = 0.0.0.0 ]
+          [ "$(dig +short @127.0.0.1 ads.example.org A)" = 0.0.0.0 ]
+          dig +short @127.0.0.1 example.com A | grep -Eqv '^0\.0\.0\.0$'
+          [ "$(dig +short @127.0.0.1 nas.home.arpa A)" = 192.168.1.20 ]
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -u admin:correct-horse-battery http://127.0.0.1:3000/control/status)" = 200 ]
+          [ "$(curl -s -o /dev/null -w '%{http_code}' -u admin:wrong-password http://127.0.0.1:3000/control/status)" = 401 ]
+          EOF
+      - name: Clean up
+        if: always()
+        working-directory: examples/local
+        env:
+          PODMAN: sudo podman
+        run: ./down.sh
