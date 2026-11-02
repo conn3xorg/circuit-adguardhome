@@ -13,7 +13,7 @@ variable "adguard_password" {
 }
 
 module "adguardhome" {
-  source = "github.com/conn3xorg/circuit-adguardhome?ref=v0.1.0"
+  source = "github.com/conn3xorg/circuit-adguardhome?ref=v0.1.1"
 
   hosts                = { dns = "192.168.1.2" }
   ssh_private_key_file = "~/.ssh/id_ed25519"
