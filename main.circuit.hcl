@@ -246,7 +246,7 @@ circuit "adguardhome" {
       command = <<-EOT
         set -e
         umask 077
-        new=${local.config_file}.conn3x
+        new=${local.desired_file}.candidate
         hash=$(htpasswd -niBC 10 '${var.admin_username}' < ${local.password_file} | head -n 1 | cut -d: -f2-)
         [ -n "$hash" ]
         { cat ${local.desired_file}; printf 'users:\n  - name: %s\n    password: %s\n' '${var.admin_username}' "$hash"; } > "$new"
