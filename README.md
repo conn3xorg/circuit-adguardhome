@@ -1,5 +1,7 @@
 # circuit-adguardhome
 
+[![Conn3x grade](https://conn3x.org/circuits/adguardhome/grade.svg)](https://conn3x.org/circuits/adguardhome/grade)
+
 A Conn3x circuit that runs [AdGuard Home](https://adguard.com/adguard-home/overview.html) on your hosts, so every device that asks it for DNS gets ads and trackers answered with `0.0.0.0`. The TV, the phones and the guest's laptop all get it, because they all ask the same server.
 
 AdGuard Home comes from its official GitHub release, checked against a pinned SHA-256, and runs as a systemd service under a user of its own. You give it a password, the upstream servers it should ask, its blocklists and the local names your network answers to, such as `nas.home.arpa`, and it lands the same way on Debian, Ubuntu, Fedora and Rocky Linux. There's no setup wizard to click through: the circuit writes the config, and AdGuard Home starts ready.
