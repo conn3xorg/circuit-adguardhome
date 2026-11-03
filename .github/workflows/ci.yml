@@ -72,6 +72,9 @@ jobs:
           conn3x init
           conn3x apply -auto-approve
           conn3x plan -detailed-exitcode
+          # The example's secrets reach the host write-only, so none of them
+          # may show up in state.
+          if grep -qF -e correct-horse-battery terraform.tfstate; then echo "A secret is in state." >&2; exit 1; fi
       # dig comes from the host container's own packages. The blocklist
       # downloads in the background after AdGuard Home starts, so the first
       # check waits for it.
