@@ -9,6 +9,18 @@ variable "admin_password" {
   ephemeral = true
 }
 
+# CI sets these to install an older release first, then upgrades to the
+# circuit's own pin by applying again without them.
+variable "adguardhome_version" {
+  type    = string
+  default = null
+}
+
+variable "checksums" {
+  type    = map(string)
+  default = null
+}
+
 module "adguardhome" {
   source = "../.."
 
@@ -17,7 +29,9 @@ module "adguardhome" {
   ssh_private_key_file = "./id_ed25519"
   ssh_known_hosts_file = "./known_hosts"
 
-  admin_password = var.admin_password
+  admin_password      = var.admin_password
+  adguardhome_version = var.adguardhome_version
+  checksums           = var.checksums
 
   user_rules = ["||ads.example.org^"]
   rewrites = {

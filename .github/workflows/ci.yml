@@ -86,7 +86,7 @@ jobs:
       # downloads in the background after AdGuard Home starts, so the first
       # check waits for it.
       - name: Check blocking, resolving, rewrites and the API
-        run: |
+        run: &check |
           sudo podman exec -i circuit-adguardhome sh -eux <<'EOF'
           if command -v apt-get >/dev/null; then
             apt-get -qq update && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y dnsutils >/dev/null
@@ -104,6 +104,20 @@ jobs:
           [ "$(curl -s -o /dev/null -w '%{http_code}' -u admin:correct-horse-battery http://127.0.0.1:3000/control/status)" = 200 ]
           [ "$(curl -s -o /dev/null -w '%{http_code}' -u admin:wrong-password http://127.0.0.1:3000/control/status)" = 401 ]
           EOF
+      # Restarting the container boots systemd again, so AdGuard Home only
+      # comes back if it's enabled. The plan has nothing to do, and blocking,
+      # resolving, rewrites and the API work as before.
+      - name: Restart the host, then plan again with no changes
+        working-directory: examples/local
+        run: |
+          sudo podman restart circuit-adguardhome
+          for _ in $(seq 60); do
+            case $(sudo podman exec circuit-adguardhome systemctl is-system-running 2>/dev/null) in running|degraded) break ;; esac
+            sleep 1
+          done
+          conn3x plan -detailed-exitcode
+      - name: Check blocking, resolving, rewrites and the API after the restart
+        run: *check
       - name: A link beside the config leaves where it points as it was
         working-directory: examples/local
         env:
@@ -120,6 +134,28 @@ jobs:
             grep -qx keep /root/keep
           '
           conn3x plan -detailed-exitcode
+      # A fresh host, where down.sh also removed the state, gets the previous release, then the
+      # circuit's own pin is applied over it, the way someone raises
+      # adguardhome_version.
+      - name: Upgrade from AdGuard Home 0.107.78 on a fresh host, then plan again with no changes
+        working-directory: examples/local
+        env:
+          CONTAINERFILE: ${{ github.workspace }}/conn3x/test/images/${{ matrix.distro }}/Containerfile
+          PODMAN: sudo podman
+        run: |
+          ./down.sh
+          ./up.sh
+          conn3x init
+          version() { sudo podman exec circuit-adguardhome curl -sSf --retry 10 --retry-connrefused -u admin:correct-horse-battery http://127.0.0.1:3000/control/status | grep -o '"version":"[^"]*"'; }
+          conn3x apply -auto-approve -var adguardhome_version=0.107.78 \
+            -var 'checksums={amd64="2070f644644be8299232f4a7bff857036fb1423563c1bf8c787e07aaf4f88278",arm64="71ef6d495d6d3fae45e6a80a172d44ae7f5aa528794cf927bb52fd5bff034eae"}'
+          [ "$(version)" = '"version":"v0.107.78"' ]
+          conn3x apply -auto-approve
+          conn3x plan -detailed-exitcode
+          pin=$(sed -n '/variable "adguardhome_version"/,/^}/s/.*default *= *"\(.*\)"/\1/p' ../../variables.tf)
+          [ "$(version)" = "\"version\":\"v$pin\"" ]
+      - name: Check blocking, resolving, rewrites and the API after the upgrade
+        run: *check
       - name: Clean up
         if: always()
         working-directory: examples/local

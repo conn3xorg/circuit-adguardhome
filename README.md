@@ -138,7 +138,7 @@ Rocky Linux 10, Fedora 45, Ubuntu 24.04 and Debian 13. CI applies [examples/loca
 
 They also passed on Ubuntu 24.04 and Rocky Linux 10 droplets with 1 GB of memory. On Ubuntu, resolved's stub went, the host kept its own DNS, and AdGuard Home took port 53 on every address. From outside, a UDP query got no answer, a TCP query got `REFUSED`, and the web port didn't answer. After a reboot AdGuard Home came back, the checks passed again and the plan had no changes. Changing a rewrite and `blocking_mode = "nxdomain"` rebuilt the config, the new answers came back, and the plan after was clean. So was changing the password, after which only the new one logged in.
 
-Upgrading from one `adguardhome_version` to the next hasn't been tried yet.
+CI also restarts the host and runs the same checks, then upgrades: on a fresh host it installs 0.107.78, applies again with the default `adguardhome_version`, and expects a clean plan, the new version in `/control/status` and the same checks passing.
 
 ## License
 
