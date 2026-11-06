@@ -40,6 +40,7 @@ variable "ssh_become" {
 
 variable "adguardhome_version" {
   type        = string
+  nullable    = false
   default     = "0.107.79"
   description = "AdGuard Home release to install, without the leading v."
 
@@ -51,6 +52,7 @@ variable "adguardhome_version" {
 
 variable "checksums" {
   type        = map(string)
+  nullable    = false
   description = "SHA-256 of the release tarball for each architecture, from the release's checksums.txt. Change these with adguardhome_version."
   default = {
     amd64 = "c48f4a43000665484c5ec28177de11a004759b620dae8f77b2aabefc9ef3687f"
