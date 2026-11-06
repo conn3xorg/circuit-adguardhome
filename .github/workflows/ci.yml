@@ -134,7 +134,7 @@ jobs:
             grep -qx keep /root/keep
           '
           conn3x plan -detailed-exitcode
-      # A fresh host and fresh state get the previous release, then the
+      # A fresh host, where down.sh also removed the state, gets the previous release, then the
       # circuit's own pin is applied over it, the way someone raises
       # adguardhome_version.
       - name: Upgrade from AdGuard Home 0.107.78 on a fresh host, then plan again with no changes
@@ -145,7 +145,7 @@ jobs:
         run: |
           ./down.sh
           ./up.sh
-          rm -f terraform.tfstate terraform.tfstate.backup
+          conn3x init
           version() { sudo podman exec circuit-adguardhome curl -sSf --retry 10 --retry-connrefused -u admin:correct-horse-battery http://127.0.0.1:3000/control/status | grep -o '"version":"[^"]*"'; }
           conn3x apply -auto-approve -var adguardhome_version=0.107.78 \
             -var 'checksums={amd64="2070f644644be8299232f4a7bff857036fb1423563c1bf8c787e07aaf4f88278",arm64="71ef6d495d6d3fae45e6a80a172d44ae7f5aa528794cf927bb52fd5bff034eae"}'
