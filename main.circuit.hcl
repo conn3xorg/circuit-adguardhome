@@ -89,6 +89,16 @@ circuit "stub" {
     become           = var.ssh_become
   }
 
+  # systemd-resolved reads its drop-ins as its own user, and mkdir would
+  # make the directory with the login session's umask, such as
+  # circuit-hardening's 027.
+  step "dropins" {
+    directory {
+      path = "/etc/systemd/resolved.conf.d"
+      mode = "0755"
+    }
+  }
+
   step "off" {
     file {
       path    = "/etc/systemd/resolved.conf.d/conn3x-adguardhome.conf"
@@ -167,6 +177,16 @@ circuit "adguardhome" {
     directory {
       path = "/etc/AdGuardHome"
       mode = "0700"
+    }
+  }
+
+  # mkdir would make these with the login session's umask, and under
+  # circuit-hardening's 027 the adguardhome user couldn't reach its binary.
+  step "release_dir" {
+    for_each = toset(["/opt/AdGuardHome", local.release])
+    directory {
+      path = item.value
+      mode = "0755"
     }
   }
 
