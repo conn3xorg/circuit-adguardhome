@@ -100,7 +100,8 @@ variable "web_address" {
 }
 
 variable "dns_bind_hosts" {
-  type        = list(string)
+  type = list(string)
+  # conn3x-lint:ignore C3X003 a DNS server for the whole network has to answer on it; allowed_clients limits answers to loopback and private ranges
   default     = ["0.0.0.0"]
   description = "Addresses AdGuard Home answers DNS on, port 53. \"0.0.0.0\" means every address, IPv4 and IPv6."
 
