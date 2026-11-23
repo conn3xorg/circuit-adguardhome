@@ -130,7 +130,7 @@ The blocklists download in the background once AdGuard Home is up.
 
 ## Requirements
 
-Requires Conn3x v0.6.7 or later, systemd, and amd64 or arm64 hosts. Each host needs to reach its package mirror, GitHub, the upstream servers and the blocklists' servers. AdGuard Home is light: a 1 GB host is plenty for a home network.
+Requires Conn3x v0.30.0 or later, systemd, and amd64 or arm64 hosts. Each host needs to reach its package mirror, GitHub, the upstream servers and the blocklists' servers. AdGuard Home is light: a 1 GB host is plenty for a home network.
 
 ## Tested on
 

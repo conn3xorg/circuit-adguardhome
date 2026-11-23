@@ -107,9 +107,10 @@ circuit "stub" {
   }
 
   step "restart" {
-    command {
-      command  = "! systemctl is-active -q systemd-resolved || systemctl restart systemd-resolved"
-      triggers = conn3x_file.stub__off[each.key].revision
+    service_action {
+      name     = "systemd-resolved"
+      action   = "try-restart"
+      triggers = { off = conn3x_file.stub__off[each.key].revision }
     }
   }
 
